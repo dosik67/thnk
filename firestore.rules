@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: projects
+    // Document ID: {projectId}
+    // Fields:
+    //   - uid: string (required) - Owner ID
+    //   - name: string (required, < 100 chars) - Project name
+    //   - createdAt: number (required) - Timestamp
+    //
+    // Collection: items
+    // Document ID: {itemId}
+    // Fields:
+    //   - uid: string (required) - Owner ID
+    //   - projectId: string (required) - Project ID
+    //   - rawMessage: string (required, < 10000 chars)
+    //   - title: string (required, < 500 chars)
+    //   - description: string (required, < 10000 chars)
+    //   - category: string (required, 'Task' or 'Idea')
+    //   - createdAt: number (required)
+    //   - attachment: map (optional, {name: string, url: string})
+    //   - isDone: boolean (optional)
+    //   - priority: number (optional, 1-5)
+    //   - rating: number (optional, 1-5)
+    //
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    
+    function isValidProject(data) {
+      return hasOnlyAllowedFields(['id', 'uid', 'name', 'createdAt']) &&
+             hasRequiredFields(['id', 'uid', 'name', 'createdAt']) &&
+             data.id is string &&
+             data.uid is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.createdAt is number;
+    }
+    
+    function isValidItem(data) {
+      return hasOnlyAllowedFields(['id', 'uid', 'projectId', 'rawMessage', 'title', 'description', 'category', 'createdAt', 'attachment', 'isDone', 'priority', 'rating']) &&
+             hasRequiredFields(['id', 'uid', 'projectId', 'rawMessage', 'title', 'description', 'category', 'createdAt']) &&
+             data.id is string &&
+             data.uid is string &&
+             data.projectId is string && data.projectId.size() > 0 && data.projectId.size() < 100 &&
+             data.rawMessage is string && data.rawMessage.size() <= 10000 &&
+             data.title is string && data.title.size() <= 500 &&
+             data.description is string && data.description.size() <= 10000 &&
+             data.category in ['Task', 'Idea'] &&
+             data.createdAt is number &&
+             (!('attachment' in data) || (data.attachment is map && data.attachment.keys().hasOnly(['name', 'url']) && data.attachment.name is string && data.attachment.name.size() < 500 && data.attachment.url is string && data.attachment.url.size() <= 1000000)) &&
+             (!('isDone' in data) || data.isDone is bool) &&
+             (!('priority' in data) || (data.priority is number && data.priority >= 1 && data.priority <= 5)) &&
+             (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5));
+    }
+
+    match /projects/{projectId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidProject(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isDocOwner() && isValidProject(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
+    match /items/{itemId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidItem(request.resource.data) && request.resource.data.uid == request.auth.uid;
+      allow update: if isDocOwner() && isValidItem(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+  }
+}

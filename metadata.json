@@ -1,0 +1,5 @@
+{
+  "name": "BrainBoard: AI Idea & Task Organizer",
+  "description": "A chat-based application that automatically categorizes messages into Ideas and Tasks using Gemini AI.",
+  "requestFramePermissions": []
+}

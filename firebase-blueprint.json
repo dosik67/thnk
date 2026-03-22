@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "A container for tasks and ideas",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user ID of the owner" },
+        "name": { "type": "string", "description": "The name of the project" },
+        "createdAt": { "type": "number", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "name", "createdAt"]
+    },
+    "Item": {
+      "title": "Item",
+      "description": "A task or idea",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user ID of the owner" },
+        "projectId": { "type": "string", "description": "The ID of the project this item belongs to" },
+        "rawMessage": { "type": "string", "description": "The original message" },
+        "title": { "type": "string", "description": "The title of the item" },
+        "description": { "type": "string", "description": "The description of the item" },
+        "category": { "type": "string", "enum": ["Task", "Idea"], "description": "The category of the item" },
+        "createdAt": { "type": "number", "description": "Creation timestamp" },
+        "attachment": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "url": { "type": "string" }
+          },
+          "required": ["name", "url"]
+        },
+        "isDone": { "type": "boolean", "description": "For tasks" },
+        "priority": { "type": "number", "description": "For ideas" },
+        "rating": { "type": "number", "description": "For ideas" }
+      },
+      "required": ["uid", "projectId", "rawMessage", "title", "description", "category", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Stores user projects"
+    },
+    "/items/{itemId}": {
+      "schema": { "$ref": "#/entities/Item" },
+      "description": "Stores user tasks and ideas"
+    }
+  }
+}
